@@ -19,7 +19,7 @@
 	const WELCOME: Message = {
 		id: 0,
 		role: 'assistant',
-		text: "Hi! I'm the Real Estate AI Assistant. Ask me about available properties, book a viewing, or request help from a human agent.",
+		text: "Hi! I'm the Real Estate AI Assistant.",
 		at: Date.now()
 	};
 
@@ -121,6 +121,15 @@
 		errorText = null;
 		draft = '';
 		isThinking = true;
+
+		const localUserId = nextId++;
+		const localUserMessage: Message = {
+			id: localUserId,
+			role: 'user',
+			text,
+			at: Date.now()
+		};
+		messages = [...messages, localUserMessage];
 		scrollToBottom();
 
 		try {
@@ -128,7 +137,7 @@
 			chatId = reply.chat_id;
 			writeStoredChatId(reply.chat_id);
 			messages = [
-				...messages,
+				...messages.filter((m) => m.id !== localUserId),
 				toUiMessage(reply.user_message),
 				toUiMessage(reply.assistant_message)
 			];
