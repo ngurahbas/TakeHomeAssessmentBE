@@ -24,7 +24,7 @@ def _create_conversation(client, token, *, title: str | None = None):
 def _llama_cpp_payload(content: str, *, reasoning: str | None = None) -> dict:
     """Snapshot of the real llama.cpp /v1/chat/completions response,
     captured 2026-07-30 from http://localhost:1234/v1
-    (unsloth/Qwen3.6-35B-A3B-MTP-GGUF:Q4_K_XL). Update if the upstream
+    (unsloth/gemma-4-12b-it-GGUF:UD-Q4_K_XL). Update if the upstream
     contract changes."""
     message: dict = {"role": "assistant", "content": content}
     if reasoning is not None:
@@ -33,7 +33,7 @@ def _llama_cpp_payload(content: str, *, reasoning: str | None = None) -> dict:
         "id": "chatcmpl-TEST",
         "object": "chat.completion",
         "created": 1785399003,
-        "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:Q4_K_XL",
+        "model": "unsloth/gemma-4-12b-it-GGUF:UD-Q4_K_XL",
         "system_fingerprint": "b9598-fdc3db9b6",
         "choices": [
             {"index": 0, "finish_reason": "stop", "message": message}

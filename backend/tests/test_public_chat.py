@@ -10,7 +10,7 @@ pytestmark = pytest.mark.usefixtures("client_with_full_stack")
 
 def _llama_cpp_payload(content: str, *, reasoning: str | None = None) -> dict:
     """Real llama.cpp /v1/chat/completions response shape captured 2026-07-30
-    from http://localhost:1234/v1 (unsloth/Qwen3.6-35B-A3B-MTP-GGUF:Q4_K_XL)."""
+    from http://localhost:1234/v1 (unsloth/gemma-4-12b-it-GGUF:UD-Q4_K_XL)."""
     message: dict = {"role": "assistant", "content": content}
     if reasoning is not None:
         message["reasoning_content"] = reasoning
@@ -18,7 +18,7 @@ def _llama_cpp_payload(content: str, *, reasoning: str | None = None) -> dict:
         "id": "chatcmpl-TEST",
         "object": "chat.completion",
         "created": 1785399003,
-        "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:Q4_K_XL",
+        "model": "unsloth/gemma-4-12b-it-GGUF:UD-Q4_K_XL",
         "system_fingerprint": "b9598-fdc3db9b6",
         "choices": [
             {"index": 0, "finish_reason": "stop", "message": message}

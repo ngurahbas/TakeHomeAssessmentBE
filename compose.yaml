@@ -60,7 +60,7 @@ services:
       # most OpenAI-compatible servers as a stub id. To use the llama.cpp
       # server shipped on the host (the one reachable at
       # http://localhost:1234/v1), set:
-      #   LLM_MODEL=unsloth/Qwen3.6-35B-A3B-MTP-GGUF:Q4_K_XL
+      #   LLM_MODEL=unsloth/gemma-4-12b-it-GGUF:UD-Q4_K_XL
       # in .env. Override for any other OpenAI-compatible model.
       LLM_MODEL: ${LLM_MODEL:-local-model}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
