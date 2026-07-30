@@ -30,6 +30,35 @@ TREE_URL = f"{DATASET_BASE}/tree/main"
 
 PROPERTY_TYPES = ["APARTMENT", "HOUSE", "VILLA", "STUDIO", "OFFICE"]
 LISTING_TYPES = ["SALE", "RENT"]
+STATUSES = ["AVAILABLE", "RESERVED", "SOLD", "RENTED"]
+
+CURATED_US_CITIES: list[tuple[str, str, float, float]] = [
+    ("Miami",         "FL", 25.7617,  -80.1918),
+    ("New York",      "NY", 40.7128,  -74.0060),
+    ("Los Angeles",   "CA", 34.0522, -118.2437),
+    ("Chicago",       "IL", 41.8781,  -87.6298),
+    ("Seattle",       "WA", 47.6062, -122.3321),
+    ("Austin",        "TX", 30.2672,  -97.7431),
+    ("Denver",        "CO", 39.7392, -104.9903),
+    ("Boston",        "MA", 42.3601,  -71.0589),
+    ("Atlanta",       "GA", 33.7490,  -84.3880),
+    ("San Francisco", "CA", 37.7749, -122.4194),
+    ("Portland",      "OR", 45.5152, -122.6784),
+    ("Phoenix",       "AZ", 33.4484, -112.0740),
+    ("Dallas",        "TX", 32.7767,  -96.7970),
+    ("Philadelphia",  "PA", 39.9526,  -75.1652),
+    ("San Diego",     "CA", 32.7157, -117.1611),
+]
+
+STREET_NAMES = [
+    "Maple", "Oak", "Pine", "Cedar", "Elm",
+    "Birch", "Walnut", "Sunset", "Lakeview", "Hillcrest",
+]
+
+AMENITY_POOL = [
+    "parking", "pool", "garden", "gym", "balcony",
+    "elevator", "doorman", "fireplace", "ac", "heating",
+]
 
 
 def fetch_tree_files() -> list[str]:
@@ -68,15 +97,32 @@ def normalize(row: dict, idx: int) -> dict:
     else:
         area_sqm = None
 
-    lat_base, lon_base = 25.7617, -80.1918
-    rng = random.Random(row.get("id", str(idx)))
-    lat = round(lat_base + rng.uniform(-0.1, 0.1), 6)
-    lon = round(lon_base + rng.uniform(-0.1, 0.1), 6)
-
     seed_key = f"{row.get('id', idx)}-{idx}"
     digest = int(hashlib.md5(seed_key.encode()).hexdigest(), 16)
-    prop_type = PROPERTY_TYPES[digest % len(PROPERTY_TYPES)]
-    listing_type = LISTING_TYPES[(digest >> 1) % len(LISTING_TYPES)]
+
+    city, state, base_lat, base_lon = CURATED_US_CITIES[digest % len(CURATED_US_CITIES)]
+    rng_geo = random.Random(seed_key)
+    lat = round(base_lat + rng_geo.uniform(-0.04, 0.04), 6)
+    lon = round(base_lon + rng_geo.uniform(-0.04, 0.04), 6)
+
+    prop_type = PROPERTY_TYPES[(digest >> 2) % len(PROPERTY_TYPES)]
+    listing_type = LISTING_TYPES[(digest >> 3) % len(LISTING_TYPES)]
+    status = STATUSES[(digest >> 12) % len(STATUSES)]
+
+    street = STREET_NAMES[(digest >> 4) % len(STREET_NAMES)]
+    number = (digest >> 8) % 9000 + 100
+    suffix = "Ave" if (digest & 1) else "St"
+    address_line = f"{number} {street} {suffix}"
+
+    am_count = 1 + (digest >> 16) % 3
+    seen: set[str] = set()
+    amenities: list[str] = []
+    for i in range(am_count):
+        candidate = AMENITY_POOL[(digest >> (20 + i * 3)) % len(AMENITY_POOL)]
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        amenities.append(candidate)
 
     seed_id = row.get("id", f"prop_{idx:06d}")
     images = [
@@ -98,15 +144,15 @@ def normalize(row: dict, idx: int) -> dict:
         "bedrooms": int(bedrooms) if bedrooms is not None else None,
         "bathrooms": int(bathrooms) if bathrooms is not None else None,
         "area_sqm": area_sqm,
-        "address_line": str(row.get("location", "")).strip() or "Unknown",
-        "city": "Miami",
-        "district": "FL",
+        "address_line": address_line,
+        "city": city,
+        "district": state,
         "postal_code": None,
         "country_code": "US",
         "latitude": lat,
         "longitude": lon,
-        "status": "AVAILABLE",
-        "amenities": [],
+        "status": status,
+        "amenities": amenities,
         "images": images,
     }
 
