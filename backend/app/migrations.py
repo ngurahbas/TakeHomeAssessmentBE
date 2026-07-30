@@ -112,6 +112,15 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     CREATE INDEX IF NOT EXISTS public_chat_message_session_idx
         ON public_chat_message (session_id, created_at)
     """,
+    """
+    CREATE TABLE IF NOT EXISTS ai_escalation (
+        id             BIGSERIAL    PRIMARY KEY,
+        public_chat_id UUID         NOT NULL
+            REFERENCES public_chat_session(id) ON DELETE CASCADE,
+        user_intention TEXT         NOT NULL,
+        created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+    """,
 )
 
 

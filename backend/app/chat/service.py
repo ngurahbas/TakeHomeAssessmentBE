@@ -12,7 +12,7 @@ from app.chat.schemas import (
     ChatRole,
     SendMessageResponse,
 )
-from app.chat.tools import TOOLS, tool_roster_prompt
+from app.chat.tools import TOOLS_AUTHED, tool_roster_prompt
 from app.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,7 @@ def send_message(
         )
         repository.touch_conversation(conn, conversation_id=conversation_id)
 
-    system_content = f"{settings.llm_system_prompt} {tool_roster_prompt()}"
+    system_content = f"{settings.llm_system_prompt} {tool_roster_prompt(TOOLS_AUTHED)}"
     messages: list[dict[str, str]] = [
         {"role": "system", "content": system_content}
     ]
@@ -109,7 +109,11 @@ def send_message(
 
     try:
         assistant_content = complete(
-            messages, settings=settings, tools=TOOLS, pool=pool
+            messages,
+            settings=settings,
+            tools=TOOLS_AUTHED,
+            pool=pool,
+            public_chat_id=None,
         )
     except llm.LLMError:
         logger.exception("llm: chat completion failed")

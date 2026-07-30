@@ -78,6 +78,7 @@ def complete(
     client: httpx.Client | None = None,
     tools: list[dict[str, Any]] | None = None,
     pool: Any | None = None,
+    public_chat_id: str | None = None,
 ) -> str:
     settings = settings or get_settings()
     url = settings.llm_base_url.rstrip("/") + "/chat/completions"
@@ -118,7 +119,9 @@ def complete(
                 logger.info(
                     "llm: executing tool %s with args %s", tool_name, arguments
                 )
-                result = execute_tool_call(tool_name, arguments, pool=pool)
+                result = execute_tool_call(
+                    tool_name, arguments, pool=pool, public_chat_id=public_chat_id
+                )
                 working_messages.append(
                     {
                         "role": "tool",

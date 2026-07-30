@@ -180,7 +180,10 @@ def test_search_property_tool_is_passed_in_request(client, monkeypatch):
     tools = transport.calls[0].get("tools")
     assert tools is not None
     names = sorted(t["function"]["name"] for t in tools)
-    assert names == ["SayNiceThing", "SearchProperty"]
+    # Public chat now also advertises EscalateToHuman, so we check membership
+    # rather than the full sorted equality we used before.
+    assert "SearchProperty" in names
+    assert "SayNiceThing" in names
     search = next(t for t in tools if t["function"]["name"] == "SearchProperty")
     params = search["function"]["parameters"]
     assert params["type"] == "object"

@@ -127,3 +127,34 @@ def delete_session(
             (session_id,),
         )
         return cur.rowcount > 0
+
+
+def create_escalation(
+    conn: Connection,
+    *,
+    public_chat_id: str,
+    user_intention: str,
+) -> dict[str, Any]:
+    """Record an `EscalateToHuman` AI-tool call against a public chat session.
+
+    The `user_intention` is the free-text reason the LLM extracted from the
+    conversation. `created_at` defaults to NOW() server-side.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO ai_escalation (public_chat_id, user_intention)
+            VALUES (%s, %s)
+            RETURNING id, public_chat_id, user_intention, created_at
+            """,
+            (public_chat_id, user_intention),
+        )
+        row = cur.fetchone()
+    assert row is not None
+    eid, returned_chat_id, intention, created_at = row
+    return {
+        "id": eid,
+        "public_chat_id": str(returned_chat_id),
+        "user_intention": intention,
+        "created_at": created_at.isoformat(),
+    }
