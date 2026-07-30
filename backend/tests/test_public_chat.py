@@ -33,7 +33,7 @@ def _llama_cpp_payload(content: str, *, reasoning: str | None = None) -> dict:
 
 
 def _patch_llm(monkeypatch, *, contents: list[str], reasoning: str | None = None):
-    """Patch the httpx transport used by app.chat.llm so the real complete()
+    """Patch the httpx transport used by app.public_chat.llm so the real complete()
     + _extract_content() run against real-shape llama.cpp responses. Returns
     the list of outbound messages arrays (one per call)."""
     sent: list[list[dict]] = []
@@ -53,7 +53,7 @@ def _patch_llm(monkeypatch, *, contents: list[str], reasoning: str | None = None
         kwargs["transport"] = transport
         return real_client(*args, **kwargs)
 
-    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+    monkeypatch.setattr("app.public_chat.llm.httpx.Client", patched_client)
     return sent
 
 
@@ -193,7 +193,7 @@ def test_post_message_rejects_oversize_content(client):
 
 
 def test_llm_failure_returns_502_with_chat_id(client, monkeypatch):
-    from app.chat import llm as chat_llm
+    from app.public_chat import llm as chat_llm
     from app.public_chat import routes
 
     def boom(messages, *, settings=None, tools=None, pool=None, public_chat_id=None):
@@ -281,7 +281,7 @@ def test_say_nice_thing_tool_is_called_when_user_is_sad(client, monkeypatch):
         kwargs["transport"] = transport
         return real_client(*args, **kwargs)
 
-    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+    monkeypatch.setattr("app.public_chat.llm.httpx.Client", patched_client)
 
     response = client.post(
         "/public/ai-chat",
@@ -320,7 +320,7 @@ def test_say_nice_thing_tool_is_passed_in_request(client, monkeypatch):
         kwargs["transport"] = transport
         return real_client(*args, **kwargs)
 
-    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+    monkeypatch.setattr("app.public_chat.llm.httpx.Client", patched_client)
 
     response = client.post("/public/ai-chat", json={"content": "hi"})
     assert response.status_code == 200, response.text
@@ -347,7 +347,7 @@ def test_system_prompt_mentions_say_nice_thing(client, monkeypatch):
         kwargs["transport"] = transport
         return real_client(*args, **kwargs)
 
-    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+    monkeypatch.setattr("app.public_chat.llm.httpx.Client", patched_client)
 
     response = client.post("/public/ai-chat", json={"content": "hi"})
     assert response.status_code == 200, response.text

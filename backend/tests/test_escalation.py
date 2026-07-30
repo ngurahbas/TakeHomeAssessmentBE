@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from typing import Any
 
 import httpx
 import pytest
@@ -15,8 +14,8 @@ pytestmark = pytest.mark.usefixtures("client_with_full_stack")
 def _truncate_state(db_pool_seeded):
     """Wipe per-test state so cross-test leakage from the session-scoped
     Postgres container cannot poison ai_escalation assertions. We also clear
-    public_chat_session and chat_message because the CASCADE FK chains through
-    them."""
+    public_chat_session because the CASCADE FK from ai_escalation chains
+    through it."""
     with db_pool_seeded.connection() as conn:
         with conn.cursor() as cur:
             cur.execute("TRUNCATE TABLE ai_escalation RESTART IDENTITY")
@@ -121,20 +120,8 @@ def _patch_llm_with_queue(monkeypatch, payloads: list[dict]) -> _ScriptedTranspo
         kwargs["transport"] = transport
         return real_client(*args, **kwargs)
 
-    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+    monkeypatch.setattr("app.public_chat.llm.httpx.Client", patched_client)
     return transport
-
-
-def _auth(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
-
-
-def _create_conversation(client, token: str) -> dict[str, Any]:
-    response = client.post(
-        "/api/chat/conversations", json={}, headers=_auth(token)
-    )
-    assert response.status_code == 201, response.text
-    return response.json()
 
 
 _UUID_RE = re.compile(
@@ -295,7 +282,7 @@ def test_create_escalation_cascades_on_session_delete(db_pool_seeded):
 
 
 def test_escalate_to_human_schema_only_exposes_user_intention():
-    from app.chat.tools import ESCALATE_TO_HUMAN_SCHEMA
+    from app.public_chat.tools import ESCALATE_TO_HUMAN_SCHEMA
 
     assert ESCALATE_TO_HUMAN_SCHEMA["function"]["name"] == "EscalateToHuman"
     params = ESCALATE_TO_HUMAN_SCHEMA["function"]["parameters"]
@@ -307,7 +294,7 @@ def test_escalate_to_human_schema_only_exposes_user_intention():
 
 
 def test_execute_escalate_to_human_requires_user_intention(db_pool_seeded):
-    from app.chat import tools
+    from app.public_chat import tools
 
     with pytest.raises(ValueError, match="user_intention is required"):
         tools.execute_escalate_to_human(
@@ -324,7 +311,7 @@ def test_execute_escalate_to_human_requires_user_intention(db_pool_seeded):
 
 
 def test_execute_escalate_to_human_requires_public_chat_id(db_pool_seeded):
-    from app.chat import tools
+    from app.public_chat import tools
 
     with pytest.raises(
         ValueError, match="EscalateToHuman requires a public chat session id"
@@ -337,7 +324,7 @@ def test_execute_escalate_to_human_requires_public_chat_id(db_pool_seeded):
 
 
 def test_execute_escalate_to_human_requires_pool(db_pool_seeded):
-    from app.chat import tools
+    from app.public_chat import tools
 
     with pytest.raises(RuntimeError, match="requires a database pool"):
         tools.execute_escalate_to_human(
@@ -348,8 +335,8 @@ def test_execute_escalate_to_human_requires_pool(db_pool_seeded):
 
 
 def test_execute_escalate_to_human_happy_path(db_pool_seeded):
-    from app.chat import tools
     from app.public_chat import repository
+    from app.public_chat import tools
 
     with db_pool_seeded.connection() as conn:
         session_id = repository.create_session(conn)
@@ -368,7 +355,7 @@ def test_execute_escalate_to_human_happy_path(db_pool_seeded):
 
 
 def test_execute_escalate_to_human_unknown_session_raises(db_pool_seeded):
-    from app.chat import tools
+    from app.public_chat import tools
 
     bogus = str(uuid.uuid4())
     with pytest.raises(Exception):
@@ -397,36 +384,6 @@ def test_public_chat_tools_include_escalate_to_human(client, monkeypatch):
     assert "EscalateToHuman" in names
     assert "SayNiceThing" in names
     assert "SearchProperty" in names
-
-
-def test_authed_chat_tools_do_not_include_escalate_to_human(
-    client, non_admin_token, monkeypatch
-):
-    from app.chat import llm as chat_llm
-    from app.chat import service
-
-    sent: list[dict] = []
-
-    def capture(messages, *, settings=None, tools=None, pool=None, public_chat_id=None):
-        sent.append({"tools": tools, "public_chat_id": public_chat_id})
-        return "ok"
-
-    monkeypatch.setattr(service.llm, "complete", capture)
-    conv = _create_conversation(client, non_admin_token)
-    response = client.post(
-        f"/api/chat/conversations/{conv['id']}/messages",
-        json={"content": "hi"},
-        headers=_auth(non_admin_token),
-    )
-    assert response.status_code == 200, response.text
-
-    assert len(sent) == 1
-    tools = sent[0]["tools"]
-    names = [t["function"]["name"] for t in tools]
-    assert "EscalateToHuman" not in names
-    assert "SayNiceThing" in names
-    assert "SearchProperty" in names
-    assert sent[0]["public_chat_id"] is None
 
 
 def test_public_chat_dispatch_creates_escalation_row(
@@ -573,34 +530,3 @@ def test_system_prompt_makes_escalation_mandatory_when_cannot_fulfill(
     # Empty-result carve-out is present so the model does not escalate on
     # every typo'd city.
     assert "do not escalate just because the result is empty" in content
-
-
-def test_authed_chat_system_prompt_omits_escalate_to_human(
-    client, non_admin_token, monkeypatch
-):
-    from app.chat import llm as chat_llm
-    from app.chat import service
-
-    sent: list[dict] = []
-
-    def capture(messages, *, settings=None, tools=None, pool=None, public_chat_id=None):
-        sent.append({"messages": messages, "tools": tools})
-        return "ok"
-
-    monkeypatch.setattr(service.llm, "complete", capture)
-    conv = _create_conversation(client, non_admin_token)
-    response = client.post(
-        f"/api/chat/conversations/{conv['id']}/messages",
-        json={"content": "hi"},
-        headers=_auth(non_admin_token),
-    )
-    assert response.status_code == 200, response.text
-
-    assert len(sent) == 1
-    system_msg = sent[0]["messages"][0]
-    assert system_msg["role"] == "system"
-    content = system_msg["content"]
-    # The authed chat's tool roster must not advertise EscalateToHuman,
-    # because the authed path does not carry a public_chat_id.
-    roster = content.split("only tools available to you are:")[1]
-    assert "EscalateToHuman" not in roster

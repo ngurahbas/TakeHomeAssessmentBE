@@ -286,26 +286,14 @@ TOOL_MAP: dict[str, Any] = {
     "EscalateToHuman": execute_escalate_to_human,
 }
 
-# Tools exposed to the public (unauthenticated) chat — EscalateToHuman is
-# available because public chat is the only path that has a `public_chat_id`
-# to attach an escalation to.
-TOOLS_PUBLIC: list[dict[str, Any]] = [
+# Tools exposed to the public (unauthenticated) chat. EscalateToHuman is
+# included because the public chat is the only path that carries a
+# `public_chat_id` to attribute an escalation to.
+TOOLS: list[dict[str, Any]] = [
     SAY_NICE_THING_SCHEMA,
     SEARCH_PROPERTY_SCHEMA,
     ESCALATE_TO_HUMAN_SCHEMA,
 ]
-
-# Tools exposed to the authenticated chat. EscalateToHuman is intentionally
-# omitted: the authed path does not carry a public_chat_id, and the
-# escalation flow is a public-chat concern in this MVP.
-TOOLS_AUTHED: list[dict[str, Any]] = [
-    SAY_NICE_THING_SCHEMA,
-    SEARCH_PROPERTY_SCHEMA,
-]
-
-# Backward-compatible alias (used by tests and any external importer). Points
-# at the public set, which is the richer one.
-TOOLS: list[dict[str, Any]] = TOOLS_PUBLIC
 
 
 def tool_roster_prompt(tools: list[dict[str, Any]] | None = None) -> str:

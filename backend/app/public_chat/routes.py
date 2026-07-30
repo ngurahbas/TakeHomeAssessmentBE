@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException, status
 from psycopg_pool import ConnectionPool
 
 from app.auth.routes import get_db_pool
-from app.chat.llm import LLMError, complete
-from app.chat.tools import TOOLS_PUBLIC, tool_roster_prompt
 from app.public_chat import repository
+from app.public_chat.llm import LLMError, complete
+from app.public_chat.tools import TOOLS, tool_roster_prompt
 from app.public_chat.schemas import (
     PublicChatMessageOut,
     PublicChatSendRequest,
@@ -53,7 +53,7 @@ def post_message(
         )
         repository.touch_session(conn, session_id=session_id)
 
-    system_content = f"{settings.llm_system_prompt} {tool_roster_prompt(TOOLS_PUBLIC)}"
+    system_content = f"{settings.llm_system_prompt} {tool_roster_prompt(TOOLS)}"
     messages: list[dict[str, str]] = [
         {"role": "system", "content": system_content}
     ]
@@ -64,7 +64,7 @@ def post_message(
         assistant_content = complete(
             messages,
             settings=settings,
-            tools=TOOLS_PUBLIC,
+            tools=TOOLS,
             pool=pool,
             public_chat_id=session_id,
         )

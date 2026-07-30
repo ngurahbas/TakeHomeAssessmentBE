@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from app.chat.tools import execute_tool_call
+from app.public_chat.tools import execute_tool_call
 from app.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)

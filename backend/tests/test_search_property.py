@@ -24,14 +24,6 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_conversation(client, token):
-    response = client.post(
-        "/api/chat/conversations", json={}, headers=_auth(token)
-    )
-    assert response.status_code == 201, response.text
-    return response.json()
-
-
 def _llama_cpp_payload(content: str, *, reasoning: str | None = None) -> dict:
     """Snapshot of the real llama.cpp /v1/chat/completions response,
     captured 2026-07-30 from http://localhost:1234/v1
@@ -127,7 +119,7 @@ def _patch_llm_with_queue(monkeypatch, payloads: list[dict]) -> _ScriptedTranspo
         kwargs["transport"] = transport
         return real_client(*args, **kwargs)
 
-    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+    monkeypatch.setattr("app.public_chat.llm.httpx.Client", patched_client)
     return transport
 
 
@@ -479,35 +471,6 @@ def test_search_property_max_results_is_clamped(
     )
     results = json.loads(tool_message["content"])["result"]
     assert len(results) == 10
-
-
-def test_search_property_in_authenticated_chat(
-    client, admin_token, non_admin_token, monkeypatch
-):
-    _make_property(client, admin_token, city="Boston", title="Authed Boston Loft")
-
-    transport = _patch_llm_with_queue(
-        monkeypatch,
-        [
-            _tool_call_payload("SearchProperty", json.dumps({"city": "Boston"})),
-            _llama_cpp_payload("Found 1."),
-        ],
-    )
-
-    conv = _create_conversation(client, non_admin_token)
-    response = client.post(
-        f"/api/chat/conversations/{conv['id']}/messages",
-        json={"content": "Rentals in Boston?"},
-        headers=_auth(non_admin_token),
-    )
-    assert response.status_code == 200, response.text
-    assert response.json()["assistant_message"]["content"] == "Found 1."
-
-    tool_message = next(
-        m for m in transport.calls[1]["messages"] if m["role"] == "tool"
-    )
-    results = json.loads(tool_message["content"])["result"]
-    assert [r["title"] for r in results] == ["Authed Boston Loft"]
 
 
 def test_system_prompt_mentions_search_property(client, monkeypatch):
