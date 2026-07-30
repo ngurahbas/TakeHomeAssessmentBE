@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 
 from app.auth.routes import router as auth_router
+from app.chat.routes import router as chat_router
 from app.db import make_pool, probe as db_probe
 from app.migrations import ensure_schema
 from app.properties.routes import router as properties_router
@@ -54,6 +55,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Real Estate AI Assistant", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(properties_router)
+app.include_router(chat_router)
 
 
 @app.get("/api/health")

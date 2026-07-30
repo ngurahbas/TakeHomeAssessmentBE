@@ -42,6 +42,20 @@ services:
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
       SEED_PROPERTIES: ${SEED_PROPERTIES:-}
+      # LLM (OpenAI-compatible chat completions endpoint). The default points
+      # at host.docker.internal:1234, which reaches an LM Studio / llama.cpp
+      # server running on the Docker host. Override via .env if your model
+      # server lives elsewhere.
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:1234/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-not-needed}
+      # LLM_MODEL is a placeholder by default — `local-model` is accepted by
+      # most OpenAI-compatible servers as a stub id. To use the llama.cpp
+      # server shipped on the host (the one reachable at
+      # http://localhost:1234/v1), set:
+      #   LLM_MODEL=unsloth/Qwen3.6-35B-A3B-MTP-GGUF:Q4_K_XL
+      # in .env. Override for any other OpenAI-compatible model.
+      LLM_MODEL: ${LLM_MODEL:-local-model}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
     depends_on:
       db:
         condition: service_healthy

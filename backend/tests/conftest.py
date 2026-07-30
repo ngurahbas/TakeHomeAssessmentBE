@@ -6,6 +6,8 @@ TEST_SEED_ADMIN_EMAIL = "admin@example.com"
 TEST_SEED_ADMIN_PASSWORD = "correct-horse-battery-staple"
 TEST_SECONDARY_USER_EMAIL = "agent@example.com"
 TEST_SECONDARY_USER_PASSWORD = "secondary-test-password"
+TEST_CHAT_OTHER_USER_EMAIL = "chat-other@example.com"
+TEST_CHAT_OTHER_USER_PASSWORD = "chat-other-test-password"
 
 
 def _postgres_url(container) -> str:
@@ -43,6 +45,12 @@ def client_with_postgres(postgres_container, monkeypatch):
     with TestClient(app) as client:
         yield client
     get_settings.cache_clear()
+
+
+@pytest.fixture
+def client(client_with_full_stack):
+    """Alias for the full-stack TestClient; convenient default in test modules."""
+    return client_with_full_stack
 
 
 @pytest.fixture
@@ -123,6 +131,43 @@ def non_admin_token(client_with_full_stack, secondary_user):
         json={
             "email": secondary_user["email"],
             "password": secondary_user["password"],
+        },
+    )
+    assert response.status_code == 200
+    return response.json()["token"]
+
+
+@pytest.fixture
+def chat_other_user(db_pool_seeded):
+    """Insert a second non-admin user for chat ownership-isolation tests."""
+    from app.auth.security import hash_password
+
+    pool = db_pool_seeded
+    password_hash = hash_password(TEST_CHAT_OTHER_USER_PASSWORD)
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO app_user (email, password_hash, role) "
+                "VALUES (%s, %s, 'AGENT') "
+                "ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role "
+                "RETURNING id",
+                (TEST_CHAT_OTHER_USER_EMAIL, password_hash),
+            )
+            (user_id,) = cur.fetchone()
+    return {
+        "id": user_id,
+        "email": TEST_CHAT_OTHER_USER_EMAIL,
+        "password": TEST_CHAT_OTHER_USER_PASSWORD,
+    }
+
+
+@pytest.fixture
+def chat_other_token(client_with_full_stack, chat_other_user):
+    response = client_with_full_stack.post(
+        "/api/auth/login",
+        json={
+            "email": chat_other_user["email"],
+            "password": chat_other_user["password"],
         },
     )
     assert response.status_code == 200
