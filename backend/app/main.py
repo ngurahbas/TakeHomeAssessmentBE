@@ -9,6 +9,7 @@ from app.chat.routes import router as chat_router
 from app.db import make_pool, probe as db_probe
 from app.migrations import ensure_schema
 from app.properties.routes import router as properties_router
+from app.public_chat.routes import router as public_chat_router
 from app.seed import ensure_seed_admin, ensure_seed_properties
 from app.settings import get_settings
 from app.valkey_client import make_valkey, probe as valkey_probe
@@ -56,6 +57,7 @@ app = FastAPI(title="Real Estate AI Assistant", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(properties_router)
 app.include_router(chat_router)
+app.include_router(public_chat_router)
 
 
 @app.get("/api/health")

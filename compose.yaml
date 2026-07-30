@@ -43,10 +43,18 @@ services:
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
       SEED_PROPERTIES: ${SEED_PROPERTIES:-}
       # LLM (OpenAI-compatible chat completions endpoint). The default points
-      # at host.docker.internal:1234, which reaches an LM Studio / llama.cpp
-      # server running on the Docker host. Override via .env if your model
-      # server lives elsewhere.
-      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:1234/v1}
+      # at http://localhost:1234/v1, matching the in-process default in
+      # app/settings.py. Inside compose the backend container's own
+      # loopback is NOT the host's loopback, so for a host-side LLM
+      # server you must override via .env. Options:
+      #   - Docker Desktop (Mac/Windows): http://host.docker.internal:1234/v1
+      #   - Linux (Docker bridge):        http://172.20.0.1:1234/v1
+      #                                   (the bridge gateway — verify with
+      #                                    `docker network inspect <net> | grep Gateway`)
+      #   - Same-network LLM service:     http://llm:1234/v1 (add a service
+      #                                   that publishes the model on the
+      #                                   compose network).
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://localhost:1234/v1}
       LLM_API_KEY: ${LLM_API_KEY:-not-needed}
       # LLM_MODEL is a placeholder by default — `local-model` is accepted by
       # most OpenAI-compatible servers as a stub id. To use the llama.cpp

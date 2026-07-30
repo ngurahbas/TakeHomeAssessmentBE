@@ -90,6 +90,28 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     CREATE INDEX IF NOT EXISTS chat_message_conv_created_idx
         ON chat_message (conversation_id, created_at)
     """,
+    """
+    CREATE TABLE IF NOT EXISTS public_chat_session (
+        id            UUID         PRIMARY KEY,
+        created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS public_chat_message (
+        id          BIGSERIAL    PRIMARY KEY,
+        session_id  UUID         NOT NULL REFERENCES public_chat_session(id) ON DELETE CASCADE,
+        role        VARCHAR(16)  NOT NULL,
+        content     TEXT         NOT NULL,
+        created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        CONSTRAINT public_chat_message_role_chk
+            CHECK (role IN ('system', 'user', 'assistant'))
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS public_chat_message_session_idx
+        ON public_chat_message (session_id, created_at)
+    """,
 )
 
 

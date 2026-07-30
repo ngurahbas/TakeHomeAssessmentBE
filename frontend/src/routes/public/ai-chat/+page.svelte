@@ -1,6 +1,11 @@
 <script lang="ts">
-	import { tick } from 'svelte';
-	import { Bot, RotateCcw, Send, Sparkles, User } from 'lucide-svelte';
+	import { onMount, tick } from 'svelte';
+	import { AlertCircle, Bot, RotateCcw, Send, Sparkles, User } from 'lucide-svelte';
+	import { sendPublicMessage } from './chat.remote';
+	import {
+		PublicChatUnavailableError,
+		type PublicChatMessageOut
+	} from './chat.types';
 
 	type Role = 'user' | 'assistant';
 
@@ -18,26 +23,26 @@
 		at: Date.now()
 	};
 
-	const REPLIES = [
-		"I can search for 2-bedroom apartments in your area. What's your price range?",
-		"I found 3 properties that match. Would you like to schedule a viewing?",
-		"Booking a viewing for Saturday at 2:00 PM. Please confirm the property address.",
-		"Let me connect you to a human agent — they'll be with you shortly.",
-		"Our office hours are 9:00 AM to 7:00 PM, Monday through Saturday.",
-		"Parking is included with most of our listings. Pets are welcome with a small deposit."
-	];
+	const CHAT_ID_STORAGE_KEY = 'public-ai-chat:chat-id';
 
 	let messages = $state<Message[]>([WELCOME]);
 	let draft = $state('');
 	let isThinking = $state(false);
+	let errorText = $state<string | null>(null);
+	let chatId = $state<string | null>(null);
 	let listEl = $state<HTMLDivElement | null>(null);
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 	let nextId = 1;
 
 	const canSend = $derived(draft.trim().length > 0 && !isThinking);
 
-	function pickReply(): string {
-		return REPLIES[Math.floor(Math.random() * REPLIES.length)];
+	function toUiMessage(m: PublicChatMessageOut): Message {
+		return {
+			id: nextId++,
+			role: m.role === 'assistant' ? 'assistant' : 'user',
+			text: m.content,
+			at: Date.parse(m.created_at) || Date.now()
+		};
 	}
 
 	function autoGrow(node: HTMLTextAreaElement) {
@@ -61,32 +66,84 @@
 		}
 	}
 
+	function readStoredChatId(): string | null {
+		try {
+			return window.localStorage.getItem(CHAT_ID_STORAGE_KEY);
+		} catch {
+			return null;
+		}
+	}
+
+	function writeStoredChatId(value: string | null) {
+		try {
+			if (value === null) {
+				window.localStorage.removeItem(CHAT_ID_STORAGE_KEY);
+			} else {
+				window.localStorage.setItem(CHAT_ID_STORAGE_KEY, value);
+			}
+		} catch {
+			/* localStorage may be disabled (private mode); fall back silently */
+		}
+	}
+
 	function reset() {
 		messages = [WELCOME];
 		draft = '';
 		isThinking = false;
+		errorText = null;
+		chatId = null;
+		writeStoredChatId(null);
 		scrollToBottom();
 		textareaEl?.focus();
 	}
+
+	onMount(() => {
+		chatId = readStoredChatId();
+	});
 
 	async function send() {
 		const text = draft.trim();
 		if (!text || isThinking) return;
 
-		messages = [...messages, { id: nextId++, role: 'user', text, at: Date.now() }];
+		errorText = null;
 		draft = '';
 		isThinking = true;
 		scrollToBottom();
 
-		const delay = 700 + Math.random() * 500;
-		setTimeout(() => {
+		try {
+			const reply = await sendPublicMessage({ chat_id: chatId, content: text });
+			chatId = reply.chat_id;
+			writeStoredChatId(reply.chat_id);
 			messages = [
 				...messages,
-				{ id: nextId++, role: 'assistant', text: pickReply(), at: Date.now() }
+				toUiMessage(reply.user_message),
+				toUiMessage(reply.assistant_message)
 			];
+		} catch (err) {
+			const fallbackChatId = err instanceof PublicChatUnavailableError ? err.chatId : null;
+			if (fallbackChatId && fallbackChatId !== chatId) {
+				chatId = fallbackChatId;
+				writeStoredChatId(fallbackChatId);
+			}
+			const detail =
+				err instanceof PublicChatUnavailableError
+					? err.message
+					: 'The assistant is unreachable right now. Please try again in a moment.';
+			errorText = detail;
+			messages = [
+				...messages,
+				{
+					id: nextId++,
+					role: 'assistant',
+					text: `Sorry, I couldn't reach the assistant. ${detail}`,
+					at: Date.now()
+				}
+			];
+		} finally {
 			isThinking = false;
 			scrollToBottom();
-		}, delay);
+			textareaEl?.focus();
+		}
 	}
 
 	function onKeydown(e: KeyboardEvent) {
@@ -126,24 +183,26 @@
 				<p class="text-xs opacity-60">Real Estate AI Assistant</p>
 			</div>
 		</div>
-		<div class="flex items-center gap-2">
-			<span
-				class="badge preset-tonal-warning text-[10px] uppercase tracking-wider"
-				title="This page is a UI preview and is not connected to the backend."
-			>
-				Preview · not connected
-			</span>
-			<button
-				type="button"
-				class="btn-icon btn preset-tonal-surface"
-				aria-label="Reset conversation"
-				title="Reset conversation"
-				onclick={reset}
-			>
-				<RotateCcw size={16} strokeWidth={1.75} />
-			</button>
-		</div>
+		<button
+			type="button"
+			class="btn-icon btn preset-tonal-surface"
+			aria-label="Reset conversation"
+			title="Reset conversation"
+			onclick={reset}
+		>
+			<RotateCcw size={16} strokeWidth={1.75} />
+		</button>
 	</header>
+
+	{#if errorText}
+		<div
+			role="alert"
+			class="alert preset-tonal-error flex items-start gap-2 p-3 text-sm"
+		>
+			<AlertCircle size={16} strokeWidth={1.75} class="mt-0.5 shrink-0" />
+			<span>{errorText}</span>
+		</div>
+	{/if}
 
 	<div
 		bind:this={listEl}
