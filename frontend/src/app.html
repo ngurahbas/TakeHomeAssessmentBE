@@ -4,6 +4,21 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<script>
+			(() => {
+				try {
+					var m = localStorage.getItem('mode');
+					var mode = m === 'light' || m === 'dark' || m === 'system' ? m : 'system';
+					var dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+					document.documentElement.classList.toggle('dark', dark);
+
+					var t = localStorage.getItem('theme');
+					if (/^(cerberus|catppuccin|concord|crimson|dracula|fennec|hamlindigo|legacy|mint|modern|mona|nosh|nouveau|pine|reign|rocket|rose|rosepine|sahara|seafoam|terminus|vintage|vox|wintry)$/.test(t)) {
+						document.documentElement.setAttribute('data-theme', t);
+					}
+				} catch (e) {}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover" class="bg-surface-50-950 text-surface-950-50 min-h-screen">
