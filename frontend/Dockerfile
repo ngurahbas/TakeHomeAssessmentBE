@@ -9,7 +9,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG BACKEND_PREFIX=http://backend:8000
 ENV BACKEND_PREFIX=${BACKEND_PREFIX}
-RUN bun run build
+RUN rm -rf .svelte-kit build && bun run build
 
 FROM oven/bun:1-slim AS runtime
 WORKDIR /app

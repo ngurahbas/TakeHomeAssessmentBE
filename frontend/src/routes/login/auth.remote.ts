@@ -36,6 +36,8 @@ export const login = form(LoginSchema, async ({ email, password }, issue) => {
 		throw err;
 	}
 
-	getRequestEvent().cookies.set(SESSION_COOKIE, data.token, sessionCookieOptions());
-	redirect(303, '/');
+	const event = getRequestEvent();
+	event.cookies.set(SESSION_COOKIE, data.token, sessionCookieOptions());
+	const next = event.url.searchParams.get('next');
+	redirect(303, next && next.startsWith('/') ? next : '/dashboard');
 });

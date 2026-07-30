@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { AppBar } from '@skeletonlabs/skeleton-svelte';
+	import { Building2 } from 'lucide-svelte';
 	import favicon from '$lib/assets/favicon.svg';
 	import ThemeSelector from '$lib/components/ThemeSelector.svelte';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
@@ -30,8 +31,21 @@
 {:else}
 	<AppBar>
 		<AppBar.Toolbar>
-			<AppBar.Lead />
+			<AppBar.Lead>
+				<a
+					href={data.user ? '/dashboard' : '/'}
+					class="flex items-center gap-2 px-2 font-semibold tracking-tight"
+				>
+					<Building2 size={20} strokeWidth={1.75} class="text-primary-500" />
+					<span>Real Estate AI</span>
+				</a>
+			</AppBar.Lead>
 			<AppBar.Trail>
+				{#if data.user}
+					<a href="/dashboard" class="btn btn-sm preset-tonal-surface">Dashboard</a>
+				{:else}
+					<a href="/login" class="btn btn-sm preset-filled-primary-500">Sign in</a>
+				{/if}
 				<ThemeSelector />
 				<ThemeSwitcher />
 			</AppBar.Trail>
