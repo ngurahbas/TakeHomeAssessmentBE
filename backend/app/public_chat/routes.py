@@ -61,7 +61,9 @@ def post_message(
         messages.append({"role": m["role"], "content": m["content"]})
 
     try:
-        assistant_content = complete(messages, settings=settings, tools=TOOLS)
+        assistant_content = complete(
+            messages, settings=settings, tools=TOOLS, pool=pool
+        )
     except LLMError as exc:
         logger.warning("public_chat: llm error: %s", exc)
         raise HTTPException(

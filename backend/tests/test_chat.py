@@ -305,7 +305,7 @@ def test_llm_failure_returns_502(client, non_admin_token, monkeypatch):
     from app.chat import llm as chat_llm
     from app.chat import service
 
-    def boom(messages, *, settings=None, tools=None):
+    def boom(messages, *, settings=None, tools=None, pool=None):
         raise chat_llm.LLMError("upstream is sad")
 
     monkeypatch.setattr(service.llm, "complete", boom)

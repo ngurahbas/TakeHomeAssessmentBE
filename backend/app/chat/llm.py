@@ -77,6 +77,7 @@ def complete(
     settings: Settings | None = None,
     client: httpx.Client | None = None,
     tools: list[dict[str, Any]] | None = None,
+    pool: Any | None = None,
 ) -> str:
     settings = settings or get_settings()
     url = settings.llm_base_url.rstrip("/") + "/chat/completions"
@@ -89,8 +90,16 @@ def complete(
     if owns_client:
         client = httpx.Client(timeout=settings.llm_timeout_seconds)
     try:
-        for _ in range(_MAX_TOOL_CALL_ROUNDS):
+        for round_idx in range(_MAX_TOOL_CALL_ROUNDS):
             body = _build_request_body(working_messages, settings.llm_model, tools)
+            if tools:
+                logger.info(
+                    "llm: outbound request model=%s tools=%s messages=%d round=%d",
+                    settings.llm_model,
+                    [t.get("function", {}).get("name", "?") for t in tools],
+                    len(working_messages),
+                    round_idx,
+                )
             payload = _post(url, body, headers, client)
             message = payload["choices"][0]["message"]
 
@@ -109,7 +118,7 @@ def complete(
                 logger.info(
                     "llm: executing tool %s with args %s", tool_name, arguments
                 )
-                result = execute_tool_call(tool_name, arguments)
+                result = execute_tool_call(tool_name, arguments, pool=pool)
                 working_messages.append(
                     {
                         "role": "tool",

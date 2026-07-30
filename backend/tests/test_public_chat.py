@@ -196,7 +196,7 @@ def test_llm_failure_returns_502_with_chat_id(client, monkeypatch):
     from app.chat import llm as chat_llm
     from app.public_chat import routes
 
-    def boom(messages, *, settings=None, tools=None):
+    def boom(messages, *, settings=None, tools=None, pool=None):
         raise chat_llm.LLMError("upstream is sad")
 
     monkeypatch.setattr(routes, "complete", boom)
@@ -328,8 +328,8 @@ def test_say_nice_thing_tool_is_passed_in_request(client, monkeypatch):
     assert len(sent) == 1
     tools = sent[0].get("tools")
     assert tools is not None
-    assert len(tools) == 1
-    assert tools[0]["function"]["name"] == "SayNiceThing"
+    names = [t["function"]["name"] for t in tools]
+    assert "SayNiceThing" in names
 
 
 def test_system_prompt_mentions_say_nice_thing(client, monkeypatch):

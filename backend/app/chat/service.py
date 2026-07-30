@@ -108,7 +108,9 @@ def send_message(
     messages.append({"role": "user", "content": content})
 
     try:
-        assistant_content = complete(messages, settings=settings, tools=TOOLS)
+        assistant_content = complete(
+            messages, settings=settings, tools=TOOLS, pool=pool
+        )
     except llm.LLMError:
         logger.exception("llm: chat completion failed")
         raise
