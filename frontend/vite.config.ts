@@ -49,7 +49,7 @@ export default defineConfig({
 				$lib: 'src/lib'
 			},
 			env: {
-				dir: 'src'
+				dir: '.'
 			},
 			compilerOptions: {
 				runes: ({ filename }) =>

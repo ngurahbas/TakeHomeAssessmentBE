@@ -30,6 +30,8 @@ services:
 
   backend:
     build: ./backend
+    ports:
+      - "8000:8000"
     # Intentionally NOT published: only the frontend (SvelteKit) talks to the
     # backend, via the in-network hostname `backend` over BACKEND_PREFIX.
     # Re-add `ports: ["8000:8000"]` here if you need to debug the API from
