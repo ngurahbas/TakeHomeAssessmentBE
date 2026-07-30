@@ -2,3 +2,5 @@ fastapi>=0.140.13
 uvicorn[standard]>=0.52.0
 pydantic>=2.13.4,<3.0
 psycopg[binary,pool]>=3.3.4,<4.0
+valkey>=6.1.1,<7
+bcrypt>=5.0.0,<6

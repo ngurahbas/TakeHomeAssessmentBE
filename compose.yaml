@@ -16,14 +16,31 @@ services:
       timeout: 5s
       retries: 10
 
+  valkey:
+    image: valkey/valkey:8
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
+      VALKEY_URL: redis://valkey:6379/0
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     depends_on:
       db:
+        condition: service_healthy
+      valkey:
         condition: service_healthy
     develop:
       watch:
@@ -32,3 +49,4 @@ services:
 
 volumes:
   postgres_data:
+  valkey_data:
