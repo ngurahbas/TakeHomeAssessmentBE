@@ -30,8 +30,10 @@ services:
 
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    # Intentionally NOT published: only the frontend (SvelteKit) talks to the
+    # backend, via the in-network hostname `backend` over BACKEND_PREFIX.
+    # Re-add `ports: ["8000:8000"]` here if you need to debug the API from
+    # the host (e.g. `curl http://localhost:8000/api/health`).
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
       VALKEY_URL: redis://valkey:6379/0
@@ -46,6 +48,24 @@ services:
     develop:
       watch:
         - path: ./backend
+          action: rebuild
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_PREFIX: http://backend:8000
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_PREFIX: http://backend:8000
+      ORIGIN: http://localhost:3000
+      NODE_ENV: production
+    depends_on:
+      - backend
+    develop:
+      watch:
+        - path: ./frontend
           action: rebuild
 
 volumes:
