@@ -7,7 +7,8 @@ from fastapi import FastAPI, Request
 from app.auth.routes import router as auth_router
 from app.db import make_pool, probe as db_probe
 from app.migrations import ensure_schema
-from app.seed import ensure_seed_admin
+from app.properties.routes import router as properties_router
+from app.seed import ensure_seed_admin, ensure_seed_properties
 from app.settings import get_settings
 from app.valkey_client import make_valkey, probe as valkey_probe
 
@@ -37,6 +38,7 @@ async def lifespan(app: FastAPI):
                 with pool.connection() as conn:
                     ensure_schema(conn)
                 ensure_seed_admin(settings, pool)
+                ensure_seed_properties(settings, pool)
             except Exception:
                 logger.exception("startup: migrations/seed failed")
     try:
@@ -51,6 +53,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Real Estate AI Assistant", lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(properties_router)
 
 
 @app.get("/api/health")

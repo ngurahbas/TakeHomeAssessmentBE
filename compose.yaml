@@ -37,6 +37,7 @@ services:
       VALKEY_URL: redis://valkey:6379/0
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_PROPERTIES: ${SEED_PROPERTIES:-}
     depends_on:
       db:
         condition: service_healthy

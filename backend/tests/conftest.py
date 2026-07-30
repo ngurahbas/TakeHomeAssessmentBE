@@ -4,6 +4,8 @@ from testcontainers.community.valkey import ValkeyContainer
 
 TEST_SEED_ADMIN_EMAIL = "admin@example.com"
 TEST_SEED_ADMIN_PASSWORD = "correct-horse-battery-staple"
+TEST_SECONDARY_USER_EMAIL = "agent@example.com"
+TEST_SECONDARY_USER_PASSWORD = "secondary-test-password"
 
 
 def _postgres_url(container) -> str:
@@ -82,3 +84,74 @@ def db_pool_seeded(postgres_container, monkeypatch):
     finally:
         pool.close()
     get_settings.cache_clear()
+
+
+@pytest.fixture
+def secondary_user(db_pool_seeded):
+    """Insert a non-admin user directly via the seeded pool; return (id, email, password)."""
+    from app.auth.security import hash_password
+
+    pool = db_pool_seeded
+    password_hash = hash_password(TEST_SECONDARY_USER_PASSWORD)
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO app_user (email, password_hash, role) "
+                "VALUES (%s, %s, 'AGENT') "
+                "ON CONFLICT (email) DO UPDATE SET role = EXCLUDED.role "
+                "RETURNING id",
+                (TEST_SECONDARY_USER_EMAIL, password_hash),
+            )
+            (user_id,) = cur.fetchone()
+    return {"id": user_id, "email": TEST_SECONDARY_USER_EMAIL, "password": TEST_SECONDARY_USER_PASSWORD}
+
+
+@pytest.fixture
+def admin_token(client_with_full_stack):
+    response = client_with_full_stack.post(
+        "/api/auth/login",
+        json={"email": TEST_SEED_ADMIN_EMAIL, "password": TEST_SEED_ADMIN_PASSWORD},
+    )
+    assert response.status_code == 200
+    return response.json()["token"]
+
+
+@pytest.fixture
+def non_admin_token(client_with_full_stack, secondary_user):
+    response = client_with_full_stack.post(
+        "/api/auth/login",
+        json={
+            "email": secondary_user["email"],
+            "password": secondary_user["password"],
+        },
+    )
+    assert response.status_code == 200
+    return response.json()["token"]
+
+
+@pytest.fixture
+def property_create_payload():
+    return {
+        "title": "Modern Test Property",
+        "description": "A property used by the test suite.",
+        "property_type": "APARTMENT",
+        "listing_type": "RENT",
+        "price_amount": 1500.0,
+        "price_currency": "USD",
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "area_sqm": 65.5,
+        "address_line": "1 Test Street",
+        "city": "Testville",
+        "district": "Test District",
+        "postal_code": "00000",
+        "country_code": "US",
+        "latitude": 40.0,
+        "longitude": -74.0,
+        "status": "AVAILABLE",
+        "amenities": ["parking", "Pool", "parking"],
+        "images": [
+            {"url": "https://example.com/1.jpg", "sort_order": 0, "alt": "front"},
+            {"url": "https://example.com/2.jpg", "sort_order": 1, "alt": "kitchen"},
+        ],
+    }

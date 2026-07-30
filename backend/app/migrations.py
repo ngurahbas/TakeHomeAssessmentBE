@@ -19,6 +19,49 @@ SCHEMA_STATEMENTS: tuple[str, ...] = (
     """
     CREATE INDEX IF NOT EXISTS app_user_email_idx ON app_user (email)
     """,
+    """
+    CREATE TABLE IF NOT EXISTS property (
+        id              BIGSERIAL       PRIMARY KEY,
+        title           VARCHAR(200)    NOT NULL,
+        description     TEXT            NOT NULL DEFAULT '',
+        property_type   VARCHAR(32)     NOT NULL,
+        listing_type    VARCHAR(16)     NOT NULL,
+        price_amount    NUMERIC(14,2)   NOT NULL,
+        price_currency  CHAR(3)         NOT NULL,
+        bedrooms        INT,
+        bathrooms       INT,
+        area_sqm        NUMERIC(10,2),
+        address_line    VARCHAR(255)    NOT NULL,
+        city            VARCHAR(128)    NOT NULL,
+        district        VARCHAR(128),
+        postal_code     VARCHAR(32),
+        country_code    CHAR(2)         NOT NULL,
+        latitude        NUMERIC(9,6),
+        longitude       NUMERIC(9,6),
+        status          VARCHAR(16)     NOT NULL DEFAULT 'AVAILABLE',
+        amenities       TEXT[]          NOT NULL DEFAULT '{}',
+        images          JSONB           NOT NULL DEFAULT '[]'::jsonb,
+        created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+        updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+        created_by      BIGINT          REFERENCES app_user(id) ON DELETE SET NULL,
+        updated_by      BIGINT          REFERENCES app_user(id) ON DELETE SET NULL,
+        CONSTRAINT property_price_nonneg_chk CHECK (price_amount >= 0),
+        CONSTRAINT property_area_nonneg_chk  CHECK (area_sqm IS NULL OR area_sqm >= 0),
+        CONSTRAINT property_images_array_chk CHECK (jsonb_typeof(images) = 'array')
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS property_status_city_idx   ON property (status, city)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS property_listing_price_idx ON property (listing_type, price_amount)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS property_created_at_idx    ON property (created_at DESC)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS property_amenities_gin_idx ON property USING GIN (amenities)
+    """,
 )
 
 
