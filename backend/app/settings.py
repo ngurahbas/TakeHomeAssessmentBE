@@ -23,7 +23,11 @@ class Settings(BaseModel):
     llm_system_prompt: str = Field(
         default=(
             "You are a helpful real-estate assistant. Be concise, factual, "
-            "and friendly. If you do not know the answer, say so."
+            "and friendly. If you do not know the answer, say so. "
+            "You have access to the `SayNiceThing` tool \u2014 when the user "
+            "expresses sadness or says \"I am sad\", use it to cheer them up. "
+            "When you use SayNiceThing, output exactly what the tool "
+            "returns without adding your own words."
         )
     )
 
@@ -57,7 +61,11 @@ def get_settings() -> Settings:
             "LLM_SYSTEM_PROMPT",
             (
                 "You are a helpful real-estate assistant. Be concise, factual, "
-                "and friendly. If you do not know the answer, say so."
+                "and friendly. If you do not know the answer, say so. "
+                "You have access to the `SayNiceThing` tool \u2014 when the user "
+                "expresses sadness or says \"I am sad\", use it to cheer them up. "
+                "When you use SayNiceThing, output exactly what the tool "
+                "returns without adding your own words."
             ),
         ),
     )

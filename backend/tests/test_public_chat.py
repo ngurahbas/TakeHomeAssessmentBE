@@ -196,7 +196,7 @@ def test_llm_failure_returns_502_with_chat_id(client, monkeypatch):
     from app.chat import llm as chat_llm
     from app.public_chat import routes
 
-    def boom(messages, *, settings=None):
+    def boom(messages, *, settings=None, tools=None):
         raise chat_llm.LLMError("upstream is sad")
 
     monkeypatch.setattr(routes, "complete", boom)
@@ -224,3 +224,137 @@ def test_chat_id_is_uuid_format(client, monkeypatch):
     _patch_llm(monkeypatch, contents=["ok"])
     response = client.post("/public/ai-chat", json={"content": "hi"})
     assert _UUID_RE.match(response.json()["chat_id"])
+
+
+def _tool_call_payload(tool_name: str, arguments: str) -> dict:
+    return {
+        "id": "chatcmpl-TOOL",
+        "object": "chat.completion",
+        "created": 1785399003,
+        "model": "unsloth/gemma-4-12b-it-GGUF:UD-Q4_K_XL",
+        "choices": [
+            {
+                "index": 0,
+                "finish_reason": "tool_calls",
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "call_test_001",
+                            "type": "function",
+                            "function": {
+                                "name": tool_name,
+                                "arguments": arguments,
+                            },
+                        }
+                    ],
+                },
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 25,
+            "completion_tokens": 10,
+            "total_tokens": 35,
+            "prompt_tokens_details": {"cached_tokens": 0},
+        },
+    }
+
+
+def test_say_nice_thing_tool_is_called_when_user_is_sad(client, monkeypatch):
+    payloads = [
+        _tool_call_payload("SayNiceThing", "{}"),
+        _llama_cpp_payload("You are wonderful!"),
+    ]
+    sent: list[list[dict]] = []
+    payloads_iter = iter(payloads)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        sent.append(body["messages"])
+        return httpx.Response(200, json=next(payloads_iter))
+
+    transport = httpx.MockTransport(handler)
+    real_client = httpx.Client
+
+    def patched_client(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_client(*args, **kwargs)
+
+    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+
+    response = client.post(
+        "/public/ai-chat",
+        json={"content": "I am sad"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["assistant_message"]["content"] == "You are wonderful!"
+
+    assert len(sent) == 2
+    first_call_messages = sent[0]
+    second_call_messages = sent[1]
+
+    assert "I am sad" in first_call_messages[-1]["content"]
+
+    assert "tool" in [m["role"] for m in second_call_messages]
+    tool_msgs = [m for m in second_call_messages if m["role"] == "tool"]
+    assert len(tool_msgs) == 1
+    tool_content = tool_msgs[0]["content"]
+    assert isinstance(tool_content, str)
+    assert len(tool_content) > 0
+
+
+def test_say_nice_thing_tool_is_passed_in_request(client, monkeypatch):
+    sent: list[list[dict]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        sent.append(body)
+        return httpx.Response(200, json=_llama_cpp_payload("Hello!"))
+
+    transport = httpx.MockTransport(handler)
+    real_client = httpx.Client
+
+    def patched_client(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_client(*args, **kwargs)
+
+    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+
+    response = client.post("/public/ai-chat", json={"content": "hi"})
+    assert response.status_code == 200, response.text
+
+    assert len(sent) == 1
+    tools = sent[0].get("tools")
+    assert tools is not None
+    assert len(tools) == 1
+    assert tools[0]["function"]["name"] == "SayNiceThing"
+
+
+def test_system_prompt_mentions_say_nice_thing(client, monkeypatch):
+    sent: list[list[dict]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        sent.append(body)
+        return httpx.Response(200, json=_llama_cpp_payload("Hello!"))
+
+    transport = httpx.MockTransport(handler)
+    real_client = httpx.Client
+
+    def patched_client(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_client(*args, **kwargs)
+
+    monkeypatch.setattr("app.chat.llm.httpx.Client", patched_client)
+
+    response = client.post("/public/ai-chat", json={"content": "hi"})
+    assert response.status_code == 200, response.text
+
+    assert len(sent) == 1
+    system_msg = sent[0]["messages"][0]
+    assert system_msg["role"] == "system"
+    assert "SayNiceThing" in system_msg["content"]
+    assert "only tools" in system_msg["content"].lower()
+    assert "Do not invent" in system_msg["content"]

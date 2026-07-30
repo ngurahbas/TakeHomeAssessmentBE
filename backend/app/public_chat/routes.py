@@ -7,6 +7,7 @@ from psycopg_pool import ConnectionPool
 
 from app.auth.routes import get_db_pool
 from app.chat.llm import LLMError, complete
+from app.chat.tools import TOOLS, tool_roster_prompt
 from app.public_chat import repository
 from app.public_chat.schemas import (
     PublicChatMessageOut,
@@ -52,14 +53,15 @@ def post_message(
         )
         repository.touch_session(conn, session_id=session_id)
 
+    system_content = f"{settings.llm_system_prompt} {tool_roster_prompt()}"
     messages: list[dict[str, str]] = [
-        {"role": "system", "content": settings.llm_system_prompt}
+        {"role": "system", "content": system_content}
     ]
     for m in history:
         messages.append({"role": m["role"], "content": m["content"]})
 
     try:
-        assistant_content = complete(messages, settings=settings)
+        assistant_content = complete(messages, settings=settings, tools=TOOLS)
     except LLMError as exc:
         logger.warning("public_chat: llm error: %s", exc)
         raise HTTPException(

@@ -12,6 +12,7 @@ from app.chat.schemas import (
     ChatRole,
     SendMessageResponse,
 )
+from app.chat.tools import TOOLS, tool_roster_prompt
 from app.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -99,14 +100,15 @@ def send_message(
         )
         repository.touch_conversation(conn, conversation_id=conversation_id)
 
+    system_content = f"{settings.llm_system_prompt} {tool_roster_prompt()}"
     messages: list[dict[str, str]] = [
-        {"role": "system", "content": settings.llm_system_prompt}
+        {"role": "system", "content": system_content}
     ]
     messages.extend(history)
     messages.append({"role": "user", "content": content})
 
     try:
-        assistant_content = complete(messages, settings=settings)
+        assistant_content = complete(messages, settings=settings, tools=TOOLS)
     except llm.LLMError:
         logger.exception("llm: chat completion failed")
         raise

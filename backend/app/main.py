@@ -2,6 +2,12 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    force=True,
+)
+
 from fastapi import FastAPI, Request
 
 from app.auth.routes import router as auth_router
