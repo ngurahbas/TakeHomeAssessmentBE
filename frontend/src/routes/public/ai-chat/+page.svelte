@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { AlertCircle, Bot, RotateCcw, Send, Sparkles, User } from 'lucide-svelte';
-	import { sendPublicMessage } from './chat.remote';
+	import { sendPublicMessage, getPublicSession } from './chat.remote';
 	import {
 		PublicChatUnavailableError,
 		type PublicChatMessageOut
@@ -97,8 +97,21 @@
 		textareaEl?.focus();
 	}
 
-	onMount(() => {
-		chatId = readStoredChatId();
+	onMount(async () => {
+		const stored = readStoredChatId();
+		if (!stored) return;
+		chatId = stored;
+		try {
+			const session = await getPublicSession(stored);
+			if (!session || session.messages.length === 0) {
+				chatId = null;
+				writeStoredChatId(null);
+				return;
+			}
+			messages = session.messages.map(toUiMessage);
+			scrollToBottom();
+		} catch {
+		}
 	});
 
 	async function send() {

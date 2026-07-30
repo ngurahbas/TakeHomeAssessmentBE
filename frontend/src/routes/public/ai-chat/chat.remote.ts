@@ -1,9 +1,10 @@
-import { command } from '$app/server';
+import { command, query } from '$app/server';
 import { ApiError, apiFetch } from '$lib/server/api';
 import {
 	PublicChatUnavailableError,
 	type PublicChatSendRequest,
-	type PublicChatSendResponse
+	type PublicChatSendResponse,
+	type PublicChatSession
 } from './chat.types';
 
 export const sendPublicMessage = command<PublicChatSendRequest, PublicChatSendResponse>(
@@ -34,6 +35,24 @@ export const sendPublicMessage = command<PublicChatSendRequest, PublicChatSendRe
 					messageFromBody,
 					chatIdFromBody
 				);
+			}
+			throw err;
+		}
+	}
+);
+
+export const getPublicSession = query<string, PublicChatSession | null>(
+	'unchecked',
+	async (chatId) => {
+		try {
+			return await apiFetch<PublicChatSession>(
+				`/public/ai-chat/${chatId}`,
+				{ method: 'GET' },
+				null
+			);
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 404) {
+				return null;
 			}
 			throw err;
 		}
