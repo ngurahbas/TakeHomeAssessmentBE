@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { apiFetch, getTokenFromCookies } from '$lib/server/api';
 import type { PropertyOut } from '../properties.types';
-import type { PageServerLoad } from './$types';
+import type { LayoutServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, cookies }) => {
+export const load: LayoutServerLoad = async ({ params, cookies }) => {
 	const id = Number(params.id);
 	if (!Number.isInteger(id) || id <= 0) {
 		throw error(400, 'Invalid property id');
