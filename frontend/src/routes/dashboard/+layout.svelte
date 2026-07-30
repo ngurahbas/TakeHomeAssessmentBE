@@ -17,13 +17,18 @@
 	}
 
 	const navItems = [
-		{ href: '/dashboard', label: 'Overview', icon: LayoutDashboard, match: '/' },
-		{ href: '/dashboard/properties', label: 'Properties', icon: Building2, match: '/properties' },
+		{ href: '/dashboard', label: 'Overview', icon: LayoutDashboard, match: '/dashboard' },
+		{
+			href: '/dashboard/properties',
+			label: 'Properties',
+			icon: Building2,
+			match: '/dashboard/properties'
+		},
 		{
 			href: '/dashboard/ai-escalations',
 			label: 'AI Escalations',
 			icon: MessageSquareWarning,
-			match: '/ai-escalations'
+			match: '/dashboard/ai-escalations'
 		}
 	] as const;
 </script>
@@ -35,11 +40,11 @@
 		<nav class="flex-1 space-y-1 p-4">
 			<ul class="space-y-1">
 				{#each navItems as item (item.href)}
-					{@const active = isActive(item.match === '/' ? '/dashboard' : item.match)}
+					{@const active = isActive(item.match)}
 					<li>
 						<a
 							href={item.href}
-							data-active={active}
+							data-active={active || null}
 							class="hover:preset-tonal-surface flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition data-[active]:preset-filled-primary-500 data-[active]:text-primary-contrast-500"
 						>
 							<item.icon size={18} strokeWidth={1.75} />
