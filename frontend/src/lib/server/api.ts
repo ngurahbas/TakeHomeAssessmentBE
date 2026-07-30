@@ -1,4 +1,5 @@
 import { BACKEND_PREFIX } from '$app/env/private';
+import { getRequestEvent } from '$app/server';
 import { SESSION_COOKIE } from './session';
 
 export class ApiError extends Error {
@@ -41,7 +42,10 @@ export async function apiFetch<T = unknown>(
 		headers.set('content-type', 'application/json');
 		body = JSON.stringify(body);
 	}
-	const token = init.token ?? cookieToken;
+	let token: string | null | undefined = init.token ?? cookieToken;
+	if (token === undefined) {
+		token = getRequestEvent()?.cookies.get(SESSION_COOKIE) ?? null;
+	}
 	if (token) {
 		headers.set('authorization', `Bearer ${token}`);
 	}

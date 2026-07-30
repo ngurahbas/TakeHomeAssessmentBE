@@ -57,7 +57,6 @@
 				{...form}
 				method="POST"
 				class="flex items-center justify-end gap-2"
-				onsubmit={() => (open = false)}
 			>
 				<input type="hidden" name="id" value={id} />
 				<Dialog.CloseTrigger class="btn preset-tonal-surface">Cancel</Dialog.CloseTrigger>
