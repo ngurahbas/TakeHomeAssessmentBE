@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Building2 } from 'lucide-svelte';
+	import { Building2, MessageSquareWarning } from 'lucide-svelte';
 
 	let { data }: { data: { user: { email: string; role: string } } } = $props();
 </script>
@@ -30,6 +30,22 @@
 				<h2 class="h4 leading-none">Properties</h2>
 			</div>
 			<p class="opacity-70 mt-3 text-sm">Browse, create, edit, and remove listings.</p>
+		</a>
+		<a
+			href="/dashboard/ai-escalations"
+			class="card preset-filled-surface-100-900 hover:preset-filled-surface-200-800 block p-5 transition"
+		>
+			<div class="flex items-center gap-3">
+				<span
+					class="bg-warning-500/15 text-warning-500 grid h-10 w-10 place-items-center rounded-full"
+				>
+					<MessageSquareWarning size={18} strokeWidth={1.75} />
+				</span>
+				<h2 class="h4 leading-none">AI Escalations</h2>
+			</div>
+			<p class="opacity-70 mt-3 text-sm">
+				Review chat sessions the AI handed off to a human.
+			</p>
 		</a>
 	</div>
 </section>

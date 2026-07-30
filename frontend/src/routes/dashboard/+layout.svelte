@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Building2, CircleUser, LayoutDashboard } from 'lucide-svelte';
+	import {
+		Building2,
+		CircleUser,
+		LayoutDashboard,
+		MessageSquareWarning
+	} from 'lucide-svelte';
 	import type { Snippet } from 'svelte';
 
 	let { data, children }: { data: { user: { email: string; role: string } }; children: Snippet } =
@@ -13,7 +18,13 @@
 
 	const navItems = [
 		{ href: '/dashboard', label: 'Overview', icon: LayoutDashboard, match: '/' },
-		{ href: '/dashboard/properties', label: 'Properties', icon: Building2, match: '/properties' }
+		{ href: '/dashboard/properties', label: 'Properties', icon: Building2, match: '/properties' },
+		{
+			href: '/dashboard/ai-escalations',
+			label: 'AI Escalations',
+			icon: MessageSquareWarning,
+			match: '/ai-escalations'
+		}
 	] as const;
 </script>
 

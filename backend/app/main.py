@@ -10,6 +10,7 @@ logging.basicConfig(
 
 from fastapi import FastAPI, Request
 
+from app.ai_escalations.routes import router as ai_escalations_router
 from app.auth.routes import router as auth_router
 from app.db import make_pool, probe as db_probe
 from app.migrations import ensure_schema
@@ -62,6 +63,7 @@ app = FastAPI(title="Real Estate AI Assistant", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(properties_router)
 app.include_router(public_chat_router)
+app.include_router(ai_escalations_router)
 
 
 @app.get("/api/health")
