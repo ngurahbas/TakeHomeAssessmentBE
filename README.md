@@ -70,7 +70,52 @@ flowchart LR
 
 ## Local development
 
-All commands below assume you're in `frontend/`. Prerequisite: Bun 1+ and a reachable FastAPI backend.
+Any service can run natively. The all-in-container path lives in [Docker / compose](#docker--compose).
+
+### Typical dev loop
+
+The canonical native dev path — data services in compose, backend and frontend running natively with hot reload:
+
+```sh
+# terminal 0 — data services (from repo root)
+docker compose up db valkey -d
+
+# terminal 1 — backend
+cd backend
+pip install -r requirements-dev.txt
+python run.py
+
+# terminal 2 — frontend
+cd frontend
+bun install
+bun run dev
+# open http://localhost:3000
+```
+
+### Backend (`backend/`)
+
+Stack: Python 3.14 + FastAPI + uvicorn, pydantic v2, psycopg, valkey-py, bcrypt. Reads `.env` at the repo root (gitignored).
+
+| Env var | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Postgres URL. For native dev: `postgresql://postgres:postgres@localhost:5432/postgres`. |
+| `VALKEY_URL` | Valkey/Redis URL. For native dev: `redis://localhost:6379/0`. |
+| `LLM_BASE_URL` | OpenAI-compatible chat completions endpoint. Native default: `http://localhost:1234/v1` (host-side llama.cpp). |
+| `LLM_MODEL` | Real model id. Default for the local llama.cpp: `unsloth/gemma-4-12b-it-GGUF:UD-Q4_K_XL`. |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | Optional. When both are set and `app_user` is empty, the seed admin is inserted on startup. |
+| `SEED_PROPERTIES` | Set to `1` to bulk-load the 250-row vendored seed on first start. |
+
+Commands:
+
+```sh
+pip install -r requirements-dev.txt    # install (or reuse .venv/)
+python run.py                           # uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+pytest                                  # tests (needs Docker daemon for testcontainers)
+```
+
+### Frontend (`frontend/`)
+
+Stack: SvelteKit 2 + Svelte 5 + Bun 1. Prerequisite: Bun 1+ and a reachable FastAPI backend.
 
 Install:
 
@@ -78,7 +123,7 @@ Install:
 bun install
 ```
 
-### Environment
+#### Environment
 
 Create `frontend/.env`. The frontend reads a small set of server-side env vars, declared in `src/env.ts` and imported via `$app/env/private`:
 
@@ -95,7 +140,7 @@ echo 'BACKEND_PREFIX=http://localhost:8000' > .env
 echo 'ORIGIN=http://localhost:3000' >> .env
 ```
 
-### Commands
+#### Commands
 
 ```sh
 bun run dev      # dev server with HMR
@@ -111,7 +156,7 @@ BACKEND_PREFIX=http://localhost:8000 bun run build
 BACKEND_PREFIX=http://localhost:8000 bun run start
 ```
 
-### Svelte inspector (dev only)
+#### Svelte inspector (dev only)
 
 **Alt+X** toggles the inspector overlay. **Click** a component to open it in your editor; **arrow keys** to navigate the tree. Disable by removing `inspector: true` from `vite.config.ts`.
 
@@ -173,16 +218,16 @@ Production runs the same `oven/bun` runtime as dev. The image is `oven/bun:1` fo
 
 ## Scaling
 
-The bottlenecks, in order: PostgreSQL (read-heavy properties), chat/escalations (shardable), LLM endpoint (the real one).
+PostgreSQL and the chat/escalation tables aren't real bottlenecks — they scale with standard techniques. The LLM endpoint is the only component that requires horizontal scale to keep up with traffic.
 
-### PostgreSQL — properties are read-heavy
+### PostgreSQL — easy wins
 
 The `properties` table is the hot path. First move: add indexes on the columns the dashboard filters and sorts by (city, price, status, created_at). If that still isn't enough, layer a read-through cache in front of the most-queried endpoints — Valkey is already in the compose stack, so no new dependency. Sharding Postgres is a much later move.
 
-### Chat & escalations — shardable
+### Chat & escalations — easy to shard
 
 Chat messages and AI escalations have no self-joins; their access pattern is append-mostly with keyset pagination by `chat_id` / `escalation_id`. That makes them straightforward to shard by tenant or by `chat_id` hash once a single Postgres instance can no longer keep up.
 
-### LLM endpoint — the real bottleneck, scales horizontally
+### LLM endpoint — the only real bottleneck
 
 This is the component that has to scale first. The model in use is **Google Gemma 4 12B**, which vLLM serves on a single consumer GPU (INT8 ~15 GB, INT4 ~8–10 GB VRAM). Horizontal scale is adding more vLLM workers behind a load balancer; the FastAPI backend already calls the LLM via an OpenAI-compatible HTTP endpoint, so swapping in a worker pool is a config change, not a code change.
