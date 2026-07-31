@@ -44,7 +44,28 @@ bun run dev
 
 ## Architecture (frontend view)
 
-_(coming soon)_
+The browser never talks to the FastAPI backend directly. All traffic enters through the SvelteKit frontend, which proxies requests to the backend in-network. The backend is not published; only the frontend's port (`3000`) is exposed.
+
+```mermaid
+flowchart LR
+    BU["Backoffice user<br/>browser"]
+    PU["Public user<br/>browser"]
+
+    subgraph compose["Compose network (only :3000 published)"]
+        FE["Frontend<br/>SvelteKit :3000<br/>(remote fn proxy)"]
+        BE["Backend<br/>FastAPI :8000"]
+        DB[("PostgreSQL<br/>db:5432")]
+    end
+
+    LLM["LLM endpoint<br/>OpenAI-compatible<br/>host or network"]
+
+    BU -->|HTTP + session cookie| FE
+    PU -->|HTTP, no auth| FE
+    FE -->|remote fn: REST + Bearer| BE
+    FE -->|remote fn: REST, no auth| BE
+    BE <-->|SQL| DB
+    BE -->|chat completions| LLM
+```
 
 ## Local development
 
